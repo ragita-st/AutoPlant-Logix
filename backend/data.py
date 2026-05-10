@@ -16,7 +16,7 @@ FLOW_MATRIX = np.array([
     [  0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0],
 ], dtype=np.float64)
 
-# Matriks Jarak (Distance Matrix Layout A) - Tabel 4
+# Matriks Jarak Standar (Layout A) - Tabel 4
 DIST_MATRIX = np.array([
     [ 0, 45, 65, 40, 55, 50, 60, 75, 70, 80, 65, 35],
     [45,  0, 60, 35, 50, 45, 55, 70, 65, 70, 60, 10],

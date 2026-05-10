@@ -15,28 +15,27 @@ def simulated_annealing_core(flow, dist, seed, strict_mode):
     np.random.seed(seed)
     current_perm = np.arange(12, dtype=np.int32)
     
+    # Kumpulan Indeks Fasilitas
+    fac_100 = np.array([0, 1, 2, 3], dtype=np.int32)
+    fac_200 = np.array([4, 5, 6, 7, 8, 9], dtype=np.int32)
+    fac_300 = np.array([10, 11], dtype=np.int32)
+    
     if strict_mode:
-        # STRICT MODE: Inisialisasi permutasi sesuai batas ruang
-        # F1-F4 (100 sqft) di Lokasi C(2), E(4), H(7), K(10)
-        # F5-F10 (200 sqft) di Lokasi A(0), D(3), F(5), G(6), I(8), J(9)
-        # F11-F12 (300 sqft) di Lokasi B(1), L(11)
-        fac_100 = np.array([0, 1, 2, 3], dtype=np.int32)
-        fac_200 = np.array([4, 5, 6, 7, 8, 9], dtype=np.int32)
-        fac_300 = np.array([10, 11], dtype=np.int32)
-        
+        # STRICT MODE: Berikan lokasi acak namun sesuai aturan ukuran
         loc_100 = np.array([2, 4, 7, 10], dtype=np.int32)
         loc_200 = np.array([0, 3, 5, 6, 8, 9], dtype=np.int32)
         loc_300 = np.array([1, 11], dtype=np.int32)
         
-        np.random.shuffle(fac_100)
-        np.random.shuffle(fac_200)
-        np.random.shuffle(fac_300)
+        np.random.shuffle(loc_100)
+        np.random.shuffle(loc_200)
+        np.random.shuffle(loc_300)
         
-        for i in range(4): current_perm[loc_100[i]] = fac_100[i]
-        for i in range(6): current_perm[loc_200[i]] = fac_200[i]
-        for i in range(2): current_perm[loc_300[i]] = fac_300[i]
+        # Format Murni: current_perm[Fasilitas] = Lokasi
+        for i in range(4): current_perm[fac_100[i]] = loc_100[i]
+        for i in range(6): current_perm[fac_200[i]] = loc_200[i]
+        for i in range(2): current_perm[fac_300[i]] = loc_300[i]
     else:
-        # FREE MODE: Acak bebas 12! kombinasi
+        # FREE MODE: Acak bebas tanpa batasan ukuran
         np.random.shuffle(current_perm)
 
     current_cost = compute_cost(current_perm, flow, dist)
@@ -52,19 +51,20 @@ def simulated_annealing_core(flow, dist, seed, strict_mode):
             next_perm = current_perm.copy()
             
             if strict_mode:
-                # Hanya swap mesin yang ukurannya sama
+                # Pilih dua FASILITAS yang berukuran sama, lalu tukar LOKASI mereka
                 group_choice = np.random.randint(0, 3)
                 if group_choice == 0:
-                    idx1, idx2 = np.random.choice(np.array([2, 4, 7, 10]), 2, replace=False)
+                    fac1, fac2 = np.random.choice(fac_100, 2, replace=False)
                 elif group_choice == 1:
-                    idx1, idx2 = np.random.choice(np.array([0, 3, 5, 6, 8, 9]), 2, replace=False)
+                    fac1, fac2 = np.random.choice(fac_200, 2, replace=False)
                 else:
-                    idx1, idx2 = 1, 11
+                    fac1, fac2 = 10, 11
+                
+                next_perm[fac1], next_perm[fac2] = next_perm[fac2], next_perm[fac1]
             else:
-                # Swap mesin bebas
-                idx1, idx2 = np.random.randint(0, 12, 2)
-
-            next_perm[idx1], next_perm[idx2] = next_perm[idx2], next_perm[idx1]
+                # Pilih dua FASILITAS bebas, lalu tukar LOKASI mereka
+                fac1, fac2 = np.random.randint(0, 12, 2)
+                next_perm[fac1], next_perm[fac2] = next_perm[fac2], next_perm[fac1]
 
             next_cost = compute_cost(next_perm, flow, dist)
             delta = next_cost - current_cost
@@ -78,13 +78,8 @@ def simulated_annealing_core(flow, dist, seed, strict_mode):
                     
         temp *= cooling_rate
 
-    # Reverse mapping untuk Javascript: Indeks = Fasilitas, Value = Lokasi
-    js_perm = np.zeros(12, dtype=np.int32)
-    for loc_idx in range(12):
-        fac_idx = best_perm[loc_idx]
-        js_perm[fac_idx] = loc_idx
-        
-    return js_perm, best_cost
+    # TIDAK ADA LAGI REVERSE MAPPING! Langsung return array lurus.
+    return best_perm, best_cost
 
 @njit(parallel=True)
 def run_auto_optimizer(flow, dist, strict_mode=False, num_restarts=50):

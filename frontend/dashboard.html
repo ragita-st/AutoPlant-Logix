@@ -1,354 +1,94 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        :root {
-            --bg-main: #f8fafc; --surface: #ffffff; --primary: #4f46e5; --primary-hover: #4338ca;
-            --secondary: #10b981; --accent: #f59e0b; --danger: #ef4444; --text-main: #0f172a;
-            --text-muted: #64748b; --border: #e2e8f0; --floor-bg: #f1f5f9;
-        }
+<style>
+  /* KITA INJECT CSS DARI FILE TERPISAH MENGGUNAKAN PYTHON */
+</style>
 
-        body { font-family: 'Segoe UI', system-ui, sans-serif; background-color: var(--bg-main); margin: 0; padding: 0; color: var(--text-main); }
-        .app-header { background: var(--surface); padding: 20px 40px; border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05); display: flex; justify-content: space-between; align-items: center; }
-        .app-title h1 { margin: 0; font-size: 24px; color: var(--text-main); font-weight: 800; display: flex; align-items: center; gap: 10px; }
-        .app-title p { margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted); }
-        .status-badge { background: #e0e7ff; color: var(--primary); padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: 0.3s;}
-
-        .dashboard-container { display: flex; justify-content: center; gap: 24px; padding: 24px; flex-wrap: wrap; }
-        .card { background: var(--surface); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -1px rgba(0,0,0,0.03); border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; }
-        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); background: #fafafa; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; justify-content: space-between;}
-        .card-body { padding: 20px; }
-        .left-panel { width: 340px; display: flex; flex-direction: column; gap: 24px; }
-        .facility-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; min-height: 180px; align-content: start;}
-        
-        .facility { 
-            background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 12px 4px; 
-            text-align: center; border-radius: 8px; cursor: grab; font-weight: 700; font-size: 13px;
-            transition: all 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1); z-index: 30; border: 1px solid rgba(0,0,0,0.1);
-        }
-        .facility:hover { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3); }
-        .facility:active { cursor: grabbing; transform: scale(0.95); }
-
-        /* STRICT MODE CLASSES */
-        body.strict-mode-active .facility.fac-100 { background: linear-gradient(135deg, #10b981, #059669); }
-        body.strict-mode-active .facility.fac-200 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-        body.strict-mode-active .facility.fac-300 { background: linear-gradient(135deg, #f59e0b, #d97706); }
-        body.strict-mode-active .slot.error-drop { background: #fee2e2; border: 3px dashed var(--danger); }
-        .strict-indicator { font-size: 11px; background: var(--danger); color: white; padding: 2px 6px; border-radius: 4px; display: none; }
-        body.strict-mode-active .strict-indicator { display: block; }
-
-        .center-panel { display: flex; flex-direction: column; gap: 24px; align-items: center; }
-        .factory-wrapper { padding: 30px; background: var(--floor-bg); border-radius: 12px; position: relative; border: 2px solid #cbd5e1; background-image: linear-gradient(#e2e8f0 1px, transparent 1px), linear-gradient(90deg, #e2e8f0 1px, transparent 1px); background-size: 20px 20px; }
-        .factory-floor { display: flex; border: 4px solid var(--text-main); background: var(--surface); position: relative; width: fit-content; margin: 0 auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
-        #route-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 20; }
-        .track-line { stroke-width: 4; fill: none; opacity: 0.7; stroke-linecap: round; stroke-linejoin: round;}
-        .aisle { width: 80px; background: #f8fafc; display: flex; align-items: center; justify-content: center; border-left: 2px dashed #94a3b8; border-right: 2px dashed #94a3b8; z-index: 10; }
-        .aisle-text { transform: rotate(90deg); font-weight: 800; color: #94a3b8; letter-spacing: 8px; font-size: 18px;}
-        .left-col { display: grid; grid-template-columns: 80px 80px; grid-template-rows: repeat(6, 80px); z-index: 10;}
-        .right-col { display: grid; grid-template-columns: 160px; grid-template-rows: repeat(6, 80px); z-index: 10;}
-        
-        .slot { background: var(--surface); border: 1px solid #64748b; display: flex; align-items: center; justify-content: center; position: relative; transition: all 0.2s; }
-        .slot.dragover { background: #e0f2fe; border: 3px dashed var(--primary); z-index: 15; }
-        .slot-label { position: absolute; top: 8px; left: 10px; font-size: 15px; font-weight: 800; color: #94a3b8; pointer-events: none; }
-        .empty-space { background: #f1f5f9; border: 1px solid #cbd5e1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; font-weight: bold; background-image: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(0,0,0,0.03) 10px, rgba(0,0,0,0.03) 20px); }
-
-        .right-panel { width: 380px; display: flex; flex-direction: column; gap: 24px; }
-        .chart-container { position: relative; height: 280px; width: 100%; }
-        select, button { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 8px; font-weight: 700; font-size: 14px; cursor: pointer; border: 1px solid var(--border); transition: all 0.2s; outline: none; }
-        select { background: #f8fafc; color: var(--text-main); font-weight: 600;}
-        .btn-primary { background: var(--primary); color: white; border: none; }
-        .btn-success { background: var(--secondary); color: white; border: none; padding: 16px; font-size: 16px; border-radius: 30px;}
-        .btn-multi { background: #8b5cf6; color: white; border: none; }
-        .btn-danger-outline { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
-        .playback-group { display: flex; gap: 8px; background: #f1f5f9; padding: 8px; border-radius: 10px; margin-bottom: 12px;}
-        .playback-group button { margin: 0; border-radius: 6px; padding: 10px; }
-        .btn-icon { background: white; color: var(--text-main); border: 1px solid var(--border); }
-        .route-preview-container { background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px dashed #cbd5e1; margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-height: 42px; }
-        .route-placeholder { color: #94a3b8; font-size: 13px; font-weight: 600; font-style: italic; width: 100%; text-align: center; }
-        .route-node { color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .route-arrow { color: #cbd5e1; font-weight: bold; font-size: 14px; }
-        .result-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 12px; text-align: center; margin-top: 10px;}
-        .result-box h4 { margin: 0 0 5px 0; color: #166534; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;}
-        .result-box .amount { font-size: 32px; font-weight: 900; color: #15803d; margin: 0; }
-        .result-box.empty { background: #f8fafc; border-color: var(--border); }
-    </style>
-</head>
-<body>
-    <header class="app-header">
-        <div class="app-title"><h1>🏭 AutoPlant Logix</h1><p>Sistem Simulasi & Optimasi Tata Letak AGV</p></div>
-        <div class="status-badge" id="app-status"><span>🔴</span> Menunggu Input Mesin...</div>
-    </header>
-
-    <div class="dashboard-container">
-        <div class="left-panel">
-            <div class="card">
-                <div class="card-header">
-                    🛠️ Inventaris Mesin <span class="strict-indicator">STRICT ON</span>
-                </div>
-                <div class="card-body" style="padding-bottom: 10px;">
-                    <div class="facility-list" id="pool" ondrop="drop(event)" ondragover="allowDrop(event)">
-                        <div class="facility fac-100" draggable="true" ondragstart="drag(event)" id="f0" data-val="0" data-size="100">F1</div>
-                        <div class="facility fac-100" draggable="true" ondragstart="drag(event)" id="f1" data-val="1" data-size="100">F2</div>
-                        <div class="facility fac-100" draggable="true" ondragstart="drag(event)" id="f2" data-val="2" data-size="100">F3</div>
-                        <div class="facility fac-100" draggable="true" ondragstart="drag(event)" id="f3" data-val="3" data-size="100">F4</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f4" data-val="4" data-size="200">F5</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f5" data-val="5" data-size="200">F6</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f6" data-val="6" data-size="200">F7</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f7" data-val="7" data-size="200">F8</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f8" data-val="8" data-size="200">F9</div>
-                        <div class="facility fac-200" draggable="true" ondragstart="drag(event)" id="f9" data-val="9" data-size="200">F10</div>
-                        <div class="facility fac-300" draggable="true" ondragstart="drag(event)" id="f10" data-val="10" data-size="300">F11</div>
-                        <div class="facility fac-300" draggable="true" ondragstart="drag(event)" id="f11" data-val="11" data-size="300">F12</div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">🤖 Pusat Kontrol AGV</div>
-                <div class="card-body">
-                    <select id="part-select" onchange="previewRoute()"></select>
-                    <div id="route-preview" class="route-preview-container"><div class="route-placeholder">Pilih produk...</div></div>
-                    <button class="btn-primary" onclick="drawRouteSingle()">Jalankan AGV Terpilih</button>
-                    <button class="btn-multi" onclick="drawRouteMulti()">🚀 Simulasi Multi-AGV</button>
-                    <hr style="border:0; border-top:1px solid #e2e8f0; margin:16px 0;">
-                    <div class="playback-group">
-                        <button class="btn-icon" onclick="playAnim()">▶️</button><button class="btn-icon" onclick="pauseAnim()">⏸️</button><button class="btn-icon" onclick="stopAnim()">⏹️</button>
-                    </div>
-                    <select id="speed-select" onchange="changeSpeed()">
-                        <option value="1">Kecepatan: 1.0x (Normal)</option><option value="0.5">Kecepatan: 0.5x (Lambat)</option><option value="5.0">Kecepatan: 5.0x (Turbo)</option>
-                    </select>
-                    <button class="btn-danger-outline" onclick="clearRoute()">Bersihkan Lintasan</button>
+<div class="dashboard-container">
+    <div class="left-panel">
+        <div class="card">
+            <div class="card-header">🛠️ Inventaris Mesin <span class="strict-indicator">STRICT ON</span></div>
+            <div class="card-body">
+                <div class="facility-list" id="pool" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)">
+                    <div class="facility fac-100" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f0" data-val="0" data-size="100">⚙️ F1</div>
+                    <div class="facility fac-100" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f1" data-val="1" data-size="100">⚙️ F2</div>
+                    <div class="facility fac-100" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f2" data-val="2" data-size="100">⚙️ F3</div>
+                    <div class="facility fac-100" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f3" data-val="3" data-size="100">⚙️ F4</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f4" data-val="4" data-size="200">📦 F5</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f5" data-val="5" data-size="200">📦 F6</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f6" data-val="6" data-size="200">📦 F7</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f7" data-val="7" data-size="200">📦 F8</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f8" data-val="8" data-size="200">📦 F9</div>
+                    <div class="facility fac-200" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f9" data-val="9" data-size="200">📦 F10</div>
+                    <div class="facility fac-300" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f10" data-val="10" data-size="300">🏭 F11</div>
+                    <div class="facility fac-300" draggable="true" ondragstart="drag(event)" ondragend="dragEnd(event)" id="f11" data-val="11" data-size="300">🏭 F12</div>
                 </div>
             </div>
         </div>
 
-        <div class="center-panel">
-            <div class="factory-wrapper">
-                <div class="factory-floor" id="floor-area">
-                    <svg id="route-layer"></svg>
-                    <div class="left-col">
-                        <div class="slot" style="grid-row: span 3; grid-column: 1;" id="loc-1" data-loc="1" data-size="300" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">B</div></div>
-                        <div class="slot" style="grid-row: span 3; grid-column: 2;" id="loc-11" data-loc="11" data-size="300" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">L</div></div>
-                        <div class="slot" style="grid-row: 4; grid-column: 1;" id="loc-2" data-loc="2" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">C</div></div>
-                        <div class="slot" style="grid-row: 4; grid-column: 2;" id="loc-4" data-loc="4" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">E</div></div>
-                        <div class="slot" style="grid-row: 5; grid-column: 1;" id="loc-7" data-loc="7" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">H</div></div>
-                        <div class="slot" style="grid-row: 5; grid-column: 2;" id="loc-10" data-loc="10" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">K</div></div>
-                        <div class="empty-space" style="grid-row: 6; grid-column: 1;"><span>N/A</span></div><div class="empty-space" style="grid-row: 6; grid-column: 2;"><span>N/A</span></div>
-                    </div>
-                    <div class="aisle" id="factory-aisle"><div class="aisle-text">A I S L E</div></div>
-                    <div class="right-col">
-                        <div class="slot" style="grid-row: 1;" id="loc-0" data-loc="0" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">A</div></div>
-                        <div class="slot" style="grid-row: 2;" id="loc-3" data-loc="3" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">D</div></div>
-                        <div class="slot" style="grid-row: 3;" id="loc-5" data-loc="5" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">F</div></div>
-                        <div class="slot" style="grid-row: 4;" id="loc-6" data-loc="6" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">G</div></div>
-                        <div class="slot" style="grid-row: 5;" id="loc-8" data-loc="8" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">I</div></div>
-                        <div class="slot" style="grid-row: 6;" id="loc-9" data-loc="9" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">J</div></div>
-                    </div>
+        <div class="card">
+            <div class="card-header">🤖 Pusat Kontrol AGV</div>
+            <div class="card-body">
+                <select id="part-select" onchange="previewRoute()"></select>
+                <div id="route-preview" class="route-preview-container"><div class="route-placeholder">Pilih produk...</div></div>
+                <button class="btn-primary" onclick="drawRouteSingle()">Jalankan AGV Terpilih</button>
+                <button class="btn-multi" onclick="drawRouteMulti()">🚀 Simulasi Multi-AGV</button>
+                <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;">
+                <div class="playback-group">
+                    <button class="btn-icon" onclick="playAnim()">▶️</button>
+                    <button class="btn-icon" onclick="pauseAnim()">⏸️</button>
+                    <button class="btn-icon" onclick="stopAnim()">⏹️</button>
                 </div>
-            </div>
-        </div>
-
-        <div class="right-panel">
-            <button class="btn-success" onclick="calculate()">📊 Kalkulasi Metrik Optimalitas</button>
-            <div class="result-box empty" id="result-container">
-                <h4>Total Material Handling Cost</h4>
-                <p class="amount" id="cost-value">Rp 0</p>
-            </div>
-            <div class="card" style="margin-top: 10px;">
-                <div class="card-header">📈 Analisis Rektilinear</div>
-                <div class="card-body"><div class="chart-container"><canvas id="costChart"></canvas></div></div>
+                <select id="speed-select" onchange="changeSpeed()">
+                    <option value="1">Kecepatan: 1.0x (Normal)</option>
+                    <option value="0.5">Kecepatan: 0.5x (Lambat)</option>
+                    <option value="5.0">Kecepatan: 5.0x (Turbo)</option>
+                </select>
+                <button class="btn-danger-outline" onclick="clearRoute()">Bersihkan Lintasan</button>
             </div>
         </div>
     </div>
 
-    <script>
-        const DIST = [[0, 45, 65, 40, 55, 50, 60, 75, 70, 80, 65, 35],[45, 0, 60, 35, 50, 45, 55, 70, 65, 70, 60, 10],[65, 60, 0, 55, 10, 45, 35, 50, 45, 55, 40, 50],[40, 35, 55, 0, 45, 40, 50, 65, 60, 70, 55, 25],[55, 50, 10, 45, 0, 35, 25, 40, 35, 45, 30, 40],[50, 45, 45, 40, 35, 0, 40, 55, 50, 60, 45, 35],[60, 55, 35, 50, 25, 40, 0, 45, 40, 50, 35, 45],[75, 70, 50, 65, 40, 55, 45, 0, 35, 45, 10, 60],[70, 65, 45, 60, 35, 50, 40, 35, 0, 40, 25, 55],[80, 70, 55, 70, 45, 60, 50, 45, 40, 0, 35, 75],[65, 60, 40, 55, 30, 45, 35, 10, 25, 35, 0, 50],[35, 10, 50, 25, 40, 35, 45, 60, 55, 75, 50, 0]];
-        const FLOW = [[0,345,145,130,45,55,0,285,140,0,0,0],[0,0,100,0,65,180,0,0,0,0,0,0],[0,0,0,75,120,135,0,0,0,0,0,0],[0,0,0,0,185,20,150,90,0,105,100,0],[0,0,0,380,0,140,0,0,75,35,0,0],[0,0,0,65,205,0,325,95,0,20,50,25],[0,0,0,0,0,0,0,180,125,30,150,120],[0,0,40,0,55,210,0,0,0,80,90,160],[0,0,0,0,0,45,0,0,0,95,75,125],[0,0,0,0,0,0,0,0,0,0,40,175],[0,0,0,0,150,0,0,0,0,35,0,390],[0,0,0,0,0,0,0,0,0,0,0,0]];
-        const PART_ROUTES = { 'alpha': [0,1,5,6,7,9,11], 'beta': [0,1,5,4,3,10,11], 'gamma': [0,2,3,4,5,11], 'delta': [0,1,2,5,6,8,11], 'epsilon':[0,2,4,3,7,10,11], 'zeta': [0,2,4,3,6,9,11], 'eta': [0,4,2,5,6,7,11], 'theta': [0,7,5,4,3,9,11], 'iota': [0,3,4,8,10,11], 'kappa': [0,7,2,5,6,8,11] };
-        const PART_NAMES = { 'alpha': 'Part α', 'beta': 'Part β', 'gamma': 'Part γ', 'delta': 'Part δ', 'epsilon': 'Part ε', 'zeta': 'Part ζ', 'eta': 'Part η', 'theta': 'Part θ', 'iota': 'Part ι', 'kappa': 'Part κ' };
-        const PART_COLORS = { 'alpha': '#ef4444', 'beta': '#f97316', 'gamma': '#f59e0b', 'delta': '#eab308', 'epsilon': '#84cc16', 'zeta': '#22c55e', 'eta': '#10b981', 'theta': '#14b8a6', 'iota': '#06b6d4', 'kappa': '#0ea5e9'};
-        
-        let chartInstance = null; let lastDrawnParts = [];
+    <div class="center-panel">
+        <div class="factory-wrapper">
+            <div class="factory-floor" id="floor-area">
+                <svg id="route-layer"></svg>
+                <div class="left-col">
+                    <div class="slot" style="grid-row: span 3; grid-column: 1;" id="loc-1" data-loc="1" data-size="300" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">B</div></div>
+                    <div class="slot" style="grid-row: span 3; grid-column: 2;" id="loc-11" data-loc="11" data-size="300" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">L</div></div>
+                    <div class="slot" style="grid-row: 4; grid-column: 1;" id="loc-2" data-loc="2" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">C</div></div>
+                    <div class="slot" style="grid-row: 4; grid-column: 2;" id="loc-4" data-loc="4" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">E</div></div>
+                    <div class="slot" style="grid-row: 5; grid-column: 1;" id="loc-7" data-loc="7" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">H</div></div>
+                    <div class="slot" style="grid-row: 5; grid-column: 2;" id="loc-10" data-loc="10" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">K</div></div>
+                    <div class="empty-space" style="grid-row: 6; grid-column: 1;">N/A</div><div class="empty-space" style="grid-row: 6; grid-column: 2;">N/A</div>
+                </div>
+                <div class="aisle" id="factory-aisle"><div class="aisle-text">A I S L E</div></div>
+                <div class="right-col">
+                    <div class="slot" style="grid-row: 1;" id="loc-0" data-loc="0" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">A</div></div>
+                    <div class="slot" style="grid-row: 2;" id="loc-3" data-loc="3" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">D</div></div>
+                    <div class="slot" style="grid-row: 3;" id="loc-5" data-loc="5" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">F</div></div>
+                    <div class="slot" style="grid-row: 4;" id="loc-6" data-loc="6" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">G</div></div>
+                    <div class="slot" style="grid-row: 5;" id="loc-8" data-loc="8" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">I</div></div>
+                    <div class="slot" style="grid-row: 6;" id="loc-9" data-loc="9" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">J</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        // --- INJEKSI DARI STREAMLIT ---
-        // /* INJECT_STATE_HERE */
-        
-        let IS_STRICT_MODE = window.STRICT_MODE || false;
+    <div class="right-panel">
+        <button class="btn-success" onclick="calculate()">📊 Kalkulasi Metrik Optimalitas</button>
+        <div class="result-box empty" id="result-container">
+            <h4>Total Material Handling Cost</h4>
+            <p class="amount" id="cost-value">Rp 0</p>
+            <div id="status-badge-res" style="font-size: 12px; color: var(--text-muted); margin-top: 5px;"></div>
+        </div>
+        <div class="card" style="margin-top: 10px;">
+            <div class="card-header">📈 Analisis Rektilinear</div>
+            <div class="card-body"><div class="chart-container"><canvas id="costChart"></canvas></div></div>
+        </div>
+    </div>
+</div>
 
-        // Mengeksekusi UI Strict Mode segera setelah JS dimuat
-        function applyStrictModeUI() {
-            if(IS_STRICT_MODE) {
-                document.body.classList.add('strict-mode-active');
-                for(let i=0; i<12; i++) {
-                    let fac = document.getElementById('f'+i);
-                    if(fac) {
-                        let size = fac.getAttribute('data-size');
-                        fac.innerText = `F${i+1} (${size})`;
-                    }
-                }
-            } else {
-                document.body.classList.remove('strict-mode-active');
-                for(let i=0; i<12; i++) {
-                    let fac = document.getElementById('f'+i);
-                    if(fac) fac.innerText = `F${i+1}`;
-                }
-            }
-        }
-        applyStrictModeUI();
-
-        function initSelect() {
-            let select = document.getElementById('part-select'); select.innerHTML = '<option value="">-- Pilih Suku Cadang Tunggal --</option>';
-            for(let key in PART_NAMES) { let opt = document.createElement('option'); opt.value = key; opt.innerHTML = PART_NAMES[key]; select.appendChild(opt); }
-        }
-        initSelect();
-
-        function updateStatus() {
-            let count = 0; for(let i=0; i<12; i++) { if(document.getElementById('loc-' + i).children.length > 1) count++; }
-            let badge = document.getElementById('app-status');
-            if (count === 12) { badge.innerHTML = "🟢 Layout Lengkap & Siap"; badge.style.color = "#059669"; badge.style.background = "#d1fae5"; }
-            else { badge.innerHTML = `🟡 Menunggu Input (${count}/12)`; badge.style.color = "#d97706"; badge.style.background = "#fef3c7"; }
-        }
-
-        function allowDrop(ev) { ev.preventDefault(); }
-        function enter(ev) { if(ev.currentTarget.id !== "pool") ev.currentTarget.classList.add('dragover'); }
-        function leave(ev) { ev.currentTarget.classList.remove('dragover'); ev.currentTarget.classList.remove('error-drop'); }
-        function drag(ev) { ev.dataTransfer.setData("text", ev.target.id); clearRoute(); document.getElementById('route-preview').innerHTML = '<div class="route-placeholder">Preview dihapus...</div>';}
-        
-        function drop(ev) {
-            ev.preventDefault(); let target = ev.currentTarget; target.classList.remove('dragover'); target.classList.remove('error-drop');
-            let elId = ev.dataTransfer.getData("text"); let el = document.getElementById(elId);
-            if (!el) return;
-
-            // VALIDASI MODE STRICT DI FRONTEND
-            if(IS_STRICT_MODE && target.id !== "pool") {
-                let facSize = parseInt(el.getAttribute('data-size'));
-                let slotSize = parseInt(target.getAttribute('data-size'));
-                if(facSize !== slotSize) {
-                    target.classList.add('error-drop');
-                    alert(`⛔ MODE STRICT AKTIF!\nMesin berukuran ${facSize} ft² tidak bisa masuk ke ruangan ${slotSize} ft².`);
-                    setTimeout(() => target.classList.remove('error-drop'), 500);
-                    return;
-                }
-            }
-
-            let sourceParent = el.parentNode;
-            if (target.id !== "pool") {
-                let existingFacility = target.querySelector('.facility');
-                if (existingFacility) sourceParent.appendChild(existingFacility);
-            }
-            target.appendChild(el); updateStatus(); clearRoute(); previewRoute();
-        }
-
-        document.addEventListener("DOMContentLoaded", function() {
-            if (window.INJECTED_LAYOUT) { autoPlace(window.INJECTED_LAYOUT); }
-        });
-
-        function autoPlace(permArray) {
-            for(let facIdx = 0; facIdx < 12; facIdx++) {
-                let locIdx = permArray[facIdx]; let facEl = document.getElementById('f' + facIdx); let locEl = document.getElementById('loc-' + locIdx);
-                if(facEl && locEl) locEl.appendChild(facEl);
-            }
-            updateStatus(); setTimeout(() => { calculate(); }, 500);
-        }
-
-        // SISA FUNGSI JS
-        function previewRoute() {
-            let partKey = document.getElementById('part-select').value; let container = document.getElementById('route-preview');
-            if (!partKey) { container.innerHTML = '<div class="route-placeholder">Pilih produk...</div>'; return; }
-            let seq = PART_ROUTES[partKey]; let color = PART_COLORS[partKey]; let html = '';
-            for(let i=0; i<seq.length; i++) {
-                html += `<div class="route-node" style="background-color: ${color}">F${seq[i] + 1}</div>`;
-                if(i < seq.length - 1) html += `<div class="route-arrow">➔</div>`;
-            }
-            container.innerHTML = html;
-        }
-
-        function calculate() {
-            let mapping = {}; let isComplete = true;
-            for(let i=0; i<12; i++) { let slot = document.getElementById('loc-' + i); if(slot.children.length === 1) { isComplete = false; break; } mapping[parseInt(slot.children[1].getAttribute('data-val'))] = i; }
-            if(!isComplete) return;
-
-            let total = 0;
-            for(let i=0; i<12; i++) { for(let j=0; j<12; j++) { if(FLOW[i][j] > 0) total += FLOW[i][j] * DIST[mapping[i]][mapping[j]]; } }
-            
-            let resBox = document.getElementById('result-container'); let resVal = document.getElementById('cost-value');
-            resBox.classList.remove('empty');
-            resVal.innerHTML = `Rp ${total.toLocaleString('id-ID')}`;
-
-            let chartLabels = []; let chartData = []; let bgColors = []; let count = 0;
-            for (let part in PART_ROUTES) {
-                if (count >= 10) break;
-                let seq = PART_ROUTES[part]; let distSum = 0;
-                for(let k=0; k<seq.length-1; k++) { distSum += DIST[mapping[seq[k]]][mapping[seq[k+1]]]; }
-                chartLabels.push('P-' + part.charAt(0).toUpperCase()); chartData.push(distSum); bgColors.push(PART_COLORS[part]); count++;
-            }
-
-            if(chartInstance) chartInstance.destroy();
-            let ctx = document.getElementById('costChart').getContext('2d');
-            chartInstance = new Chart(ctx, { type: 'bar', data: { labels: chartLabels, datasets: [{ label: 'Jarak (ft)', data: chartData, backgroundColor: bgColors, borderRadius: 4 }] }, options: { maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: '#f1f5f9' } }, x: { grid: { display: false } } } } });
-        }
-
-        function pauseAnim() { document.getElementById('route-layer').pauseAnimations(); }
-        function playAnim() { document.getElementById('route-layer').unpauseAnimations(); }
-        function stopAnim() { document.getElementById('route-layer').setCurrentTime(0); document.getElementById('route-layer').pauseAnimations(); }
-        function changeSpeed() { if(lastDrawnParts.length > 0) buildSVG(lastDrawnParts); }
-        function clearRoute() { document.getElementById('route-layer').innerHTML = ''; lastDrawnParts = []; }
-
-        function drawRouteSingle() { let pk = document.getElementById('part-select').value; if(pk) buildSVG([pk]); else alert("Pilih Suku Cadang terlebih dahulu dari dropdown!"); }
-        function drawRouteMulti() { buildSVG(['alpha', 'gamma', 'epsilon']); }
-
-        function buildSVG(partsArray) {
-            clearRoute(); lastDrawnParts = partsArray;
-            let speedMultiplier = parseFloat(document.getElementById('speed-select').value);
-            let floorRect = document.getElementById('floor-area').getBoundingClientRect();
-            let aisle = document.getElementById('factory-aisle').getBoundingClientRect();
-            let aisleCenterX = aisle.left - floorRect.left + (aisle.width / 2);
-            let svgLayer = document.getElementById('route-layer');
-
-            let mapping = {};
-            for(let i=0; i<12; i++) {
-                let slot = document.getElementById('loc-' + i);
-                if(slot.children.length > 1) { mapping[parseInt(slot.children[1].getAttribute('data-val'))] = slot; }
-            }
-            if(Object.keys(mapping).length < 12) { alert("Lengkapi 12 mesin sebelum simulasi rute AGV!"); return; }
-
-            for(let a=0; a<partsArray.length; a++) {
-                let partKey = partsArray[a]; let seq = PART_ROUTES[partKey]; let agvColor = PART_COLORS[partKey]; let trackOffset = (a - 1) * 12; 
-                let points = [];
-                for(let i=0; i<seq.length; i++) {
-                    let rect = mapping[seq[i]].getBoundingClientRect();
-                    points.push({ x: rect.left - floorRect.left + (rect.width / 2), y: rect.top - floorRect.top + (rect.height / 2) });
-                }
-
-                let dPath = `M ${points[0].x} ${points[0].y} `;
-                for(let i=0; i<points.length-1; i++) {
-                    let p1 = points[i]; let p2 = points[i+1];
-                    if (Math.abs(p1.y - p2.y) < 5) dPath += `L ${p2.x} ${p2.y} `;
-                    else dPath += `L ${aisleCenterX + trackOffset} ${p1.y} L ${aisleCenterX + trackOffset} ${p2.y} L ${p2.x} ${p2.y} `;
-                }
-
-                let pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                pathEl.setAttribute('id', `path-${a}`); pathEl.setAttribute('class', 'track-line'); pathEl.setAttribute('d', dPath); pathEl.setAttribute('stroke', agvColor);
-                svgLayer.appendChild(pathEl);
-
-                let robotGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-                let shadow = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); shadow.setAttribute('x', '-12'); shadow.setAttribute('y', '-8'); shadow.setAttribute('width', '24'); shadow.setAttribute('height', '16'); shadow.setAttribute('fill', 'rgba(0,0,0,0.2)'); shadow.setAttribute('rx', '4');
-                let body = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); body.setAttribute('x', '-14'); body.setAttribute('y', '-10'); body.setAttribute('width', '28'); body.setAttribute('height', '20'); body.setAttribute('rx', '4'); body.setAttribute('fill', agvColor);
-                let cabin = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); cabin.setAttribute('cx', '-2'); cabin.setAttribute('cy', '0'); cabin.setAttribute('r', '5'); cabin.setAttribute('fill', '#ffffff');
-                let fork1 = document.createElementNS('http://www.w3.org/2000/svg', 'line'); fork1.setAttribute('x1', '14'); fork1.setAttribute('y1', '-5'); fork1.setAttribute('x2', '20'); fork1.setAttribute('y2', '-5'); fork1.setAttribute('stroke', '#0f172a'); fork1.setAttribute('stroke-width', '2');
-                let fork2 = document.createElementNS('http://www.w3.org/2000/svg', 'line'); fork2.setAttribute('x1', '14'); fork2.setAttribute('y1', '5'); fork2.setAttribute('x2', '20'); fork2.setAttribute('y2', '5'); fork2.setAttribute('stroke', '#0f172a'); fork2.setAttribute('stroke-width', '2');
-                robotGroup.appendChild(shadow); robotGroup.appendChild(body); robotGroup.appendChild(cabin); robotGroup.appendChild(fork1); robotGroup.appendChild(fork2);
-
-                let anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
-                anim.setAttribute('fill', 'freeze'); anim.setAttribute('repeatCount', 'indefinite'); anim.setAttribute('rotate', 'auto');
-                anim.setAttribute('dur', ((pathEl.getTotalLength() / 150) / speedMultiplier) + 's');
-                let mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath'); mpath.setAttribute('href', `#path-${a}`);
-                anim.appendChild(mpath); robotGroup.appendChild(anim); svgLayer.appendChild(robotGroup);
-            }
-            playAnim();
-        }
-    </script>
-</body>
-</html>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  // /* INJECT_STATE_HERE */
+  /* KITA INJECT JAVASCRIPT DARI FILE TERPISAH DI SINI */
+</script>
