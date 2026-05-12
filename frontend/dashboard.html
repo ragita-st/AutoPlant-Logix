@@ -29,7 +29,8 @@
             <div class="card-body">
                 <select id="part-select" onchange="previewRoute()"></select>
                 <div id="route-preview" class="route-preview-container"><div class="route-placeholder">Pilih produk...</div></div>
-                <button class="btn-primary" onclick="drawRouteSingle()">Jalankan AGV Terpilih</button>
+                <button class="btn-primary" onclick="drawRouteSingle()">▶️ Jalankan AGV Terpilih</button>
+                <button class="btn-secondary" onclick="drawRouteStatic()">🗺️ Tampilkan Jalur Saja</button>
                 <button class="btn-multi" onclick="drawRouteMulti()">🚀 Simulasi Multi-AGV</button>
                 <hr style="border:0; border-top:1px solid var(--border); margin:16px 0;">
                 <div class="playback-group">
@@ -60,7 +61,7 @@
                     <div class="slot" style="grid-row: 5; grid-column: 2;" id="loc-10" data-loc="10" data-size="100" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">K</div></div>
                     <div class="empty-space" style="grid-row: 6; grid-column: 1;">N/A</div><div class="empty-space" style="grid-row: 6; grid-column: 2;">N/A</div>
                 </div>
-                <div class="aisle" id="factory-aisle"><div class="aisle-text">A I S L E</div></div>
+                <div class="aisle" id="factory-aisle"><div class="aisle-text">AISLE</div></div>
                 <div class="right-col">
                     <div class="slot" style="grid-row: 1;" id="loc-0" data-loc="0" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">A</div></div>
                     <div class="slot" style="grid-row: 2;" id="loc-3" data-loc="3" data-size="200" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="enter(event)" ondragleave="leave(event)"><div class="slot-label">D</div></div>
@@ -76,9 +77,10 @@
     <div class="right-panel">
         <button class="btn-success" onclick="calculate()">📊 Kalkulasi Metrik Optimalitas</button>
         <div class="result-box empty" id="result-container">
-            <h4>Total Material Handling Cost</h4>
+        <h4>Total Material Handling Cost</h4>
             <p class="amount" id="cost-value">Rp 0</p>
             <div id="status-badge-res" style="font-size: 12px; color: var(--text-muted); margin-top: 5px;"></div>
+            <div id="current-permutation" style="font-family: monospace; color: var(--primary); font-size: 13px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: none; word-break: break-all;"></div>
         </div>
         <div class="card" style="margin-top: 10px;">
             <div class="card-header">📈 Analisis Rektilinear</div>

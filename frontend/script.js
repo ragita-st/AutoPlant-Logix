@@ -8,6 +8,7 @@ let chartInstance = null;
 let lastDrawnParts = [];
 let IS_STRICT_MODE = window.STRICT_MODE || false;
 let draggedElement = null;
+let isCurrentlyAnimated = true;
 
 // KAMUS IKON
 const FAC_ICONS = { 100: '⚙️', 200: '📦', 300: '🏭' };
@@ -134,19 +135,42 @@ function autoPlace(permArray) {
 }
 
 function calculate() {
-    let mapping = {}; let isComplete = true;
+    let mapping = {}; 
+    let currentPerm = new Array(12); // Menampung array letak
+    let isComplete = true;
+
     for(let i=0; i<12; i++) {
         let slot = document.getElementById('loc-' + i);
         let fac = slot.querySelector('.facility');
         if(!fac) { isComplete = false; break; }
-        mapping[parseInt(fac.getAttribute('data-val'))] = i;
+        
+        let facVal = parseInt(fac.getAttribute('data-val'));
+        mapping[facVal] = i;
+        currentPerm[i] = facVal; // Menyimpan ID Mesin di index lokasi
     }
+    
     if(!isComplete) { alert("Selesaikan penempatan 12 mesin terlebih dahulu!"); return; }
 
+    // 1. Kalkulasi TMHC Utama
     let total = 0;
     for(let i=0; i<12; i++) {
         for(let j=0; j<12; j++) {
             if(FLOW[i][j] > 0) total += FLOW[i][j] * DIST[mapping[i]][mapping[j]];
+        }
+    }
+
+    // 2. Kalkulasi Bottleneck (Mesin dengan Total Flow Keluar + Masuk Tertinggi)
+    let maxFlow = -1;
+    let bottleneckFac = -1;
+    for(let i=0; i<12; i++) {
+        let currentFlow = 0;
+        for(let j=0; j<12; j++) {
+            currentFlow += FLOW[i][j]; // Flow Keluar
+            currentFlow += FLOW[j][i]; // Flow Masuk
+        }
+        if(currentFlow > maxFlow) {
+            maxFlow = currentFlow;
+            bottleneckFac = i;
         }
     }
 
@@ -156,17 +180,43 @@ function calculate() {
     if(total === 221825) { badge.innerHTML = "🌟 GLOBAL OPTIMUM DITEMUKAN"; badge.style.color = "#f59e0b"; } 
     else { badge.innerHTML = "Metrik telah dikalkulasi."; badge.style.color = "var(--text-muted)"; }
 
+    // Tampilkan Permutasi
+    let permDiv = document.getElementById('current-permutation');
+    permDiv.style.display = 'block';
+    permDiv.innerText = `Permutasi: [${currentPerm.join(', ')}]`;
+
+    // 3. Kalkulasi Analisis Rektilinear (Jarak per Suku Cadang)
     let chartLabels = []; let chartData = []; let bgColors = [];
+    let totalDistance = 0;
+    let maxRouteDist = -1;
+    let longestPartName = "";
+
     for (let part in PART_ROUTES) {
         let seq = PART_ROUTES[part]; let distSum = 0;
-        for(let k=0; k<seq.length-1; k++) { distSum += DIST[mapping[seq[k]]][mapping[seq[k+1]]]; }
-        chartLabels.push(PART_NAMES[part]); chartData.push(distSum); bgColors.push(PART_COLORS[part]);
+        for(let k=0; k<seq.length-1; k++) { 
+            distSum += DIST[mapping[seq[k]]][mapping[seq[k+1]]]; 
+        }
+        
+        totalDistance += distSum;
+        if(distSum > maxRouteDist) {
+            maxRouteDist = distSum;
+            longestPartName = PART_NAMES[part];
+        }
+
+        chartLabels.push(PART_NAMES[part]); 
+        chartData.push(distSum); 
+        bgColors.push(PART_COLORS[part]);
     }
 
+    // 4. Update UI Micro-KPI
+    document.getElementById('kpi-container').style.display = 'grid';
+    document.getElementById('kpi-dist').innerText = `${totalDistance.toLocaleString('id-ID')} ft`;
+    document.getElementById('kpi-bottle').innerText = `F${bottleneckFac + 1}`;
+    document.getElementById('kpi-longest').innerText = longestPartName;
+
+    // 5. Update Chart.js
     if(chartInstance) chartInstance.destroy();
     let ctx = document.getElementById('costChart').getContext('2d');
-    
-    // UPDATE KONFIGURASI CHARTJS UNTUK DARK MODE
     chartInstance = new Chart(ctx, { 
         type: 'bar', 
         data: { labels: chartLabels, datasets: [{ label: 'Jarak (ft)', data: chartData, backgroundColor: bgColors }] }, 
@@ -196,15 +246,22 @@ function previewRoute() {
 // ==========================================
 // 4. ANIMASI SVG AGV
 // ==========================================
-function pauseAnim() { let el = document.getElementById('route-layer'); if(el.pauseAnimations) el.pauseAnimations(); }
-function playAnim() { let el = document.getElementById('route-layer'); if(el.unpauseAnimations) el.unpauseAnimations(); }
-function stopAnim() { let el = document.getElementById('route-layer'); if(el.setCurrentTime) el.setCurrentTime(0); if(el.pauseAnimations) el.pauseAnimations(); }
-function changeSpeed() { if(lastDrawnParts.length > 0) buildSVG(lastDrawnParts); }
+function drawRouteSingle() { 
+    isCurrentlyAnimated = true;
+    let pk = document.getElementById('part-select').value; 
+    if(pk) buildSVG([pk], true); else alert("Pilih Suku Cadang dari dropdown!"); 
+}
+function drawRouteStatic() { 
+    isCurrentlyAnimated = false;
+    let pk = document.getElementById('part-select').value; 
+    if(pk) buildSVG([pk], false); else alert("Pilih Suku Cadang dari dropdown!"); 
+}
+function drawRouteMulti() { isCurrentlyAnimated = true; buildSVG(['alpha', 'gamma', 'epsilon'], true); }
+function changeSpeed() { if(lastDrawnParts.length > 0) buildSVG(lastDrawnParts, isCurrentlyAnimated); }
 function clearRoute() { document.getElementById('route-layer').innerHTML = ''; lastDrawnParts = []; }
-function drawRouteSingle() { let pk = document.getElementById('part-select').value; if(pk) buildSVG([pk]); else alert("Pilih Suku Cadang dari dropdown!"); }
-function drawRouteMulti() { buildSVG(['alpha', 'gamma', 'epsilon']); }
 
-function buildSVG(partsArray) {
+// Fungsi utama pembuat SVG dengan sakelar animasi
+function buildSVG(partsArray, animate = true) {
     clearRoute(); lastDrawnParts = partsArray;
     let speedMultiplier = parseFloat(document.getElementById('speed-select').value);
     let floorRect = document.getElementById('floor-area').getBoundingClientRect();
@@ -218,7 +275,7 @@ function buildSVG(partsArray) {
         let fac = slot.querySelector('.facility');
         if(fac) { mapping[parseInt(fac.getAttribute('data-val'))] = slot; }
     }
-    if(Object.keys(mapping).length < 12) { alert("Selesaikan 12 mesin sebelum simulasi AGV!"); return; }
+    if(Object.keys(mapping).length < 12) { alert("Selesaikan 12 mesin sebelum simulasi rute!"); return; }
 
     for(let a=0; a<partsArray.length; a++) {
         let partKey = partsArray[a]; let seq = PART_ROUTES[partKey]; let agvColor = PART_COLORS[partKey]; let trackOffset = (a - 1) * 12;
@@ -239,19 +296,22 @@ function buildSVG(partsArray) {
         pathEl.setAttribute('id', `path-${a}`); pathEl.setAttribute('class', 'track-line'); pathEl.setAttribute('d', dPath); pathEl.setAttribute('stroke', agvColor);
         svgLayer.appendChild(pathEl);
 
-        let robotGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        let shadow = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); shadow.setAttribute('x', '-12'); shadow.setAttribute('y', '-8'); shadow.setAttribute('width', '24'); shadow.setAttribute('height', '16'); shadow.setAttribute('fill', 'rgba(0,0,0,0.5)'); shadow.setAttribute('rx', '4');
-        let body = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); body.setAttribute('x', '-14'); body.setAttribute('y', '-10'); body.setAttribute('width', '28'); body.setAttribute('height', '20'); body.setAttribute('rx', '4'); body.setAttribute('fill', agvColor);
-        let cabin = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); cabin.setAttribute('cx', '-2'); cabin.setAttribute('cy', '0'); cabin.setAttribute('r', '5'); cabin.setAttribute('fill', '#ffffff');
-        robotGroup.appendChild(shadow); robotGroup.appendChild(body); robotGroup.appendChild(cabin);
+        // Hanya buat dan tempel robot jika mode animate bernilai true
+        if(animate) {
+            let robotGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            let shadow = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); shadow.setAttribute('x', '-12'); shadow.setAttribute('y', '-8'); shadow.setAttribute('width', '24'); shadow.setAttribute('height', '16'); shadow.setAttribute('fill', 'rgba(0,0,0,0.5)'); shadow.setAttribute('rx', '4');
+            let body = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); body.setAttribute('x', '-14'); body.setAttribute('y', '-10'); body.setAttribute('width', '28'); body.setAttribute('height', '20'); body.setAttribute('rx', '4'); body.setAttribute('fill', agvColor);
+            let cabin = document.createElementNS('http://www.w3.org/2000/svg', 'circle'); cabin.setAttribute('cx', '-2'); cabin.setAttribute('cy', '0'); cabin.setAttribute('r', '5'); cabin.setAttribute('fill', '#ffffff');
+            robotGroup.appendChild(shadow); robotGroup.appendChild(body); robotGroup.appendChild(cabin);
 
-        let anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
-        anim.setAttribute('fill', 'freeze'); anim.setAttribute('repeatCount', 'indefinite'); anim.setAttribute('rotate', 'auto');
-        anim.setAttribute('dur', ((pathEl.getTotalLength() / 150) / speedMultiplier) + 's');
-        let mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath'); mpath.setAttribute('href', `#path-${a}`);
-        anim.appendChild(mpath); robotGroup.appendChild(anim); svgLayer.appendChild(robotGroup);
+            let anim = document.createElementNS('http://www.w3.org/2000/svg', 'animateMotion');
+            anim.setAttribute('fill', 'freeze'); anim.setAttribute('repeatCount', 'indefinite'); anim.setAttribute('rotate', 'auto');
+            anim.setAttribute('dur', ((pathEl.getTotalLength() / 150) / speedMultiplier) + 's');
+            let mpath = document.createElementNS('http://www.w3.org/2000/svg', 'mpath'); mpath.setAttribute('href', `#path-${a}`);
+            anim.appendChild(mpath); robotGroup.appendChild(anim); svgLayer.appendChild(robotGroup);
+        }
     }
-    playAnim();
+    if(animate) playAnim();
 }
 
 initApp();
