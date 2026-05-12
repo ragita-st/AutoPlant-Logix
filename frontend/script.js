@@ -314,4 +314,46 @@ function buildSVG(partsArray, animate = true) {
     if(animate) playAnim();
 }
 
+// ==========================================
+// 5. FITUR EKSPOR GAMBAR (SCREENSHOT)
+// ==========================================
+function captureLayout() {
+    let btn = document.querySelector('button[onclick="captureLayout()"]');
+    let originalText = btn.innerHTML;
+    
+    // Ubah status tombol
+    btn.innerHTML = "⏳ Memproses Gambar...";
+    btn.style.opacity = "0.7";
+    btn.style.pointerEvents = "none";
+
+    let targetElement = document.querySelector('.factory-wrapper');
+
+    // Menggunakan pustaka html-to-image yang jauh lebih stabil untuk SVG & Gradient CSS
+    htmlToImage.toPng(targetElement, { 
+        backgroundColor: '#0f172a', 
+        pixelRatio: 2 // Resolusi HD
+    })
+    .then(function (dataUrl) {
+        // Buat link download
+        let link = document.createElement('a');
+        link.download = `AutoPlant_Layout_${new Date().getTime()}.png`;
+        link.href = dataUrl;
+        link.click();
+
+        // Kembalikan status tombol
+        btn.innerHTML = originalText;
+        btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
+    })
+    .catch(function (error) {
+        console.error("Gagal mengambil gambar: ", error);
+        alert("Terjadi kesalahan saat memproses gambar. Periksa konsol browser.");
+        
+        // Kembalikan status tombol jika gagal
+        btn.innerHTML = originalText;
+        btn.style.opacity = "1";
+        btn.style.pointerEvents = "auto";
+    });
+}
+
 initApp();

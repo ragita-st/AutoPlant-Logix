@@ -76,12 +76,38 @@
 
     <div class="right-panel">
         <button class="btn-success" onclick="calculate()">📊 Kalkulasi Metrik Optimalitas</button>
+        <button class="btn-secondary" onclick="captureLayout()" style="background: #3b82f6; border-color: #2563eb; margin-bottom: 15px;">📸 Unduh Layout (PNG)</button>
         <div class="result-box empty" id="result-container">
-        <h4>Total Material Handling Cost</h4>
+            <h4>Total Material Handling Cost</h4>
             <p class="amount" id="cost-value">Rp 0</p>
             <div id="status-badge-res" style="font-size: 12px; color: var(--text-muted); margin-top: 5px;"></div>
             <div id="current-permutation" style="font-family: monospace; color: var(--primary); font-size: 13px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); display: none; word-break: break-all;"></div>
         </div>
+
+        <div class="kpi-grid" id="kpi-container" style="display: none;">
+            <div class="kpi-card">
+                <span class="kpi-icon">📏</span>
+                <div class="kpi-info">
+                    <span class="kpi-label">Total Jarak</span>
+                    <span class="kpi-val" id="kpi-dist">0 ft</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-icon">🔥</span>
+                <div class="kpi-info">
+                    <span class="kpi-label">Bottleneck</span>
+                    <span class="kpi-val" id="kpi-bottle">F-</span>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <span class="kpi-icon">⏱️</span>
+                <div class="kpi-info">
+                    <span class="kpi-label">Rute Terjauh</span>
+                    <span class="kpi-val" id="kpi-longest">-</span>
+                </div>
+            </div>
+        </div>
+
         <div class="card" style="margin-top: 10px;">
             <div class="card-header">📈 Analisis Rektilinear</div>
             <div class="card-body"><div class="chart-container"><canvas id="costChart"></canvas></div></div>
@@ -90,6 +116,8 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html-to-image/1.11.11/html-to-image.min.js"></script>
 <script>
   // /* INJECT_STATE_HERE */
   /* KITA INJECT JAVASCRIPT DARI FILE TERPISAH DI SINI */
