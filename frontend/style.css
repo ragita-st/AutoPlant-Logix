@@ -12,6 +12,98 @@
     --floor-bg: #0f172a;      /* Latar blueprint */
 }
 
+/* =========================================
+   TEMA TERANG (LIGHT MODE) - SUPER FIX
+   ========================================= */
+
+/* 1. KOTAK-KOTAK PANEL (Cards, KPI, Result Box) */
+body.light-mode .card,
+body.light-mode .result-box,
+body.light-mode .kpi-card,
+body.light-mode .kpi-grid {
+    background-color: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 2. TEKS DI DALAM KOTAK AGAR TERBACA */
+body.light-mode,
+body.light-mode .result-box h4,
+body.light-mode .amount,
+body.light-mode .kpi-label,
+body.light-mode .kpi-val,
+body.light-mode .card-header {
+    color: #0f172a !important; /* Ubah teks jadi gelap */
+}
+body.light-mode #status-badge-res {
+    color: #64748b !important;
+}
+
+/* 3. BLUEPRINT PABRIK (Lantai Terang) */
+body.light-mode .factory-wrapper {
+    background-color: #f1f5f9 !important;
+    background-image: 
+        linear-gradient(#e2e8f0 1px, transparent 1px), 
+        linear-gradient(90deg, #e2e8f0 1px, transparent 1px) !important;
+    border: 2px solid #cbd5e1 !important;
+}
+
+/* 4. LORONG (AISLE) */
+body.light-mode .aisle {
+    background: repeating-linear-gradient(45deg, #fef9c3, #fef9c3 15px, #fef08a 15px, #fef08a 30px) !important;
+    border-left: 2px solid #facc15 !important;
+    border-right: 2px solid #facc15 !important;
+}
+body.light-mode .aisle-text {
+    color: #ca8a04 !important; /* Kuning kecokelatan */
+}
+
+/* 5. RUANG KOSONG (N/A) & SLOT DASAR (FIX MUTLAK) */
+
+/* Tampilan Slot Normal (A, B, C, dst) */
+body.light-mode .slot {
+    /* Gunakan properti 'background' murni untuk melibas semua sisa dark mode */
+    background: #ffffff !important; 
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important; 
+}
+
+/* Tampilan Slot Kosong / N/A */
+/* Menargetkan semua kemungkinan nama class yang mungkin Anda gunakan untuk slot N/A di HTML */
+body.light-mode .slot.na,
+body.light-mode .slot.empty,
+body.light-mode .slot.disabled,
+body.light-mode .na-slot,
+body.light-mode .slot[style*="N/A"],
+body.light-mode .slot:empty {
+    background: repeating-linear-gradient(45deg, #f1f5f9, #f1f5f9 10px, #e2e8f0 10px, #e2e8f0 20px) !important;
+    border: 2px dashed #cbd5e1 !important;
+    color: #64748b !important;
+}
+
+/* Memaksa elemen APAPUN yang ada di dalam kotak N/A agar ikut transparan/terang */
+body.light-mode .slot.na div,
+body.light-mode .slot:empty div {
+    background: transparent !important;
+    color: #64748b !important;
+}
+
+/* 6. TEKS MESIN TETAP PUTIH */
+body.light-mode .facility {
+    color: #ffffff !important; 
+    border: none !important;
+}
+
+/* 7. TOMBOL SECONDARY */
+body.light-mode .btn-secondary {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    border: 1px solid #cbd5e1 !important;
+}
+body.light-mode .btn-secondary:hover {
+    background: #e2e8f0 !important;
+}
+
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-main); margin: 0; padding: 0; color: var(--text-main); }
 
 .dashboard-container { display: flex; justify-content: center; gap: 24px; padding: 24px; flex-wrap: wrap; }

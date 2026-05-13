@@ -356,4 +356,36 @@ function captureLayout() {
     });
 }
 
+// ==========================================
+// 6. FITUR TEMA TERANG / GELAP (THEME TOGGLE)
+// ==========================================
+function toggleTheme() {
+    let body = document.body;
+    let btn = document.getElementById('theme-toggle');
+    
+    // Sakelar kelas light-mode
+    body.classList.toggle('light-mode');
+    
+    // Cek apakah sekarang sedang mode terang
+    let isLightMode = body.classList.contains('light-mode');
+    
+    if (isLightMode) {
+        btn.innerHTML = "🌙 Ganti ke Dark Mode";
+        
+        // Update grid warna Chart.js jika chart sudah pernah di-render
+        if(chartInstance) {
+            chartInstance.options.scales.y.grid.color = '#e2e8f0'; // Grid abu-abu terang
+            chartInstance.update();
+        }
+    } else {
+        btn.innerHTML = "☀️ Ganti ke Light Mode";
+        
+        // Update grid warna Chart.js kembali ke gelap
+        if(chartInstance) {
+            chartInstance.options.scales.y.grid.color = '#334155'; // Grid biru gelap
+            chartInstance.update();
+        }
+    }
+}
+
 initApp();
